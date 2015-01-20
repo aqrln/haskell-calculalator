@@ -36,7 +36,7 @@ parseExpression tokens = do
              in case op of
                      Just astOp -> do (right, ts') <- parseExpression $ tail ts
                                       return (astOp left right, ts')
-                     Nothing -> syntaxError "additive operation expected" ts
+                     Nothing -> return (left, ts)
 
 parseFactor :: Tokens -> MaybeAST
 parseFactor = parseNumber
