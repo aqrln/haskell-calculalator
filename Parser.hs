@@ -47,7 +47,10 @@ parseFactor (TLParen:ts) = do (x, ts') <- parseExpression ts
                               return (x, ts'')
 parseFactor ts = parseLeftAssocOperator
                  [(TMultiply, ASTMultiply), (TDivide, ASTDivide)]
-                 parseNumber ts
+                 parsePower ts
+
+parsePower :: Tokens -> ParseState
+parsePower = parseRightAssocOperator [(TPower, ASTPower)] parseNumber
 
 parseLeftAssocOperator :: [(Token, AST -> AST -> AST)] ->
                           (Tokens -> ParseState) ->
@@ -64,6 +67,20 @@ parseLeftAssocOperator tokenToAST parseElem tokens = do
                 (right, ts') <- parseElem ts
                 let ast = astOp left right
                 parseTail ast ts'
+
+parseRightAssocOperator :: [(Token, AST -> AST -> AST)] ->
+                           (Tokens -> ParseState) ->
+                           Tokens -> ParseState
+parseRightAssocOperator tokenToAST parseElem = parseExpr
+  where parseExpr ts = do
+        (left, ts') <- parseElem ts
+        if null ts'
+           then return (left, [])
+           else let astOp = lookup (head ts') tokenToAST
+                 in case astOp of
+                         Just x -> do (right, ts'') <- parseExpr $ tail ts'
+                                      return (x left right, ts'')
+                         Nothing -> return (left, ts')
 
 parseNumber :: Tokens -> ParseState
 parseNumber (TNumber n : ts) = return (ASTNumber n, ts)
