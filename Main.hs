@@ -1,5 +1,9 @@
 module Main (main) where
 
+import Lexer
+import Parser
+import Interpreter
+
 main = do
     putStrLn "CALCULATOR"
     putStr   "Type expressions to get their result; "
@@ -12,8 +16,13 @@ inputLoop = do
     input <- getLine
     case input of "exit" -> return ()
                   ""     -> inputLoop
-                  x      -> do print $ calculate x
+                  x      -> do printResult x
                                inputLoop
 
-calculate :: String -> Double
-calculate s = 0
+calculate :: String -> Either String Double
+calculate x = tokenize x >>= parse >>= evalExpr
+
+printResult :: String -> IO ()
+printResult x = case calculate x of
+                     Left err -> putStrLn $ "Error: " ++ err
+                     Right result -> print result
