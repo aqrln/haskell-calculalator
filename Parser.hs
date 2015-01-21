@@ -28,15 +28,17 @@ parse = parseExpression
 
 parseExpression :: Tokens -> MaybeAST
 parseExpression tokens = do
-    (left, ts) <- parseFactor tokens
-    if length ts == 0
-       then return (left, [])
-       else let operations = [(TPlus, ASTPlus), (TMinus, ASTMinus)]
-                op = lookup (head ts) operations
-             in case op of
-                     Just astOp -> do (right, ts') <- parseExpression $ tail ts
-                                      return (astOp left right, ts')
-                     Nothing -> return (left, ts)
+    (initial, ts) <- parseFactor tokens
+    parseTail initial ts
+      where parseTail left [] = return (left, [])
+            parseTail left (t:ts)
+              | t == TPlus = parseExpr ASTPlus left ts
+              | t == TMinus = parseExpr ASTMinus left ts
+              | otherwise = return (left, ts)
+            parseExpr astOp left ts = do
+                (right, ts') <- parseFactor ts
+                let ast = astOp left right
+                parseTail ast ts'
 
 parseFactor :: Tokens -> MaybeAST
 parseFactor = parseNumber
