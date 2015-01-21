@@ -17,5 +17,4 @@ evalExpr (ASTDivide l r) = do left <- evalExpr l
                               if right == 0
                                  then Left "division by zero"
                                  else return $ left / right
-
 evalExpr _ = Left "incorrect expression"

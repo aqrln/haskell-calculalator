@@ -47,19 +47,12 @@ parseAddExpr = parseLeftAssocOperator
                parseMultExpr
 
 parseMultExpr :: Tokens -> ParseState
-parseMultExpr (TMinus:ts)  = do (x, ts') <- parseMultExpr ts
-                                return (ASTUnaryMinus x, ts')
-parseMultExpr (TPlus:ts)   = do (x, ts') <- parseMultExpr ts
-                                return (ASTUnaryPlus x, ts')
-parseMultExpr (TLParen:ts) = do (x, ts') <- parseAddExpr ts
-                                ts'' <- matchToken TRParen ts'
-                                return (x, ts'')
 parseMultExpr ts = parseLeftAssocOperator
                    [(TMultiply, ASTMultiply), (TDivide, ASTDivide)]
                    parsePowerExpr ts
 
 parsePowerExpr :: Tokens -> ParseState
-parsePowerExpr = parseRightAssocOperator [(TPower, ASTPower)] parseNumber
+parsePowerExpr = parseRightAssocOperator [(TPower, ASTPower)] parseAtomExpr
 
 parseLeftAssocOperator :: [(Token, AST -> AST -> AST)] ->
                           (Tokens -> ParseState) ->
@@ -91,6 +84,13 @@ parseRightAssocOperator tokenToAST parseElem = parseExpr
                                       return (x left right, ts'')
                          Nothing -> return (left, ts')
 
-parseNumber :: Tokens -> ParseState
-parseNumber (TNumber n : ts) = return (ASTNumber n, ts)
-parseNumber ts = syntaxError "number expected" ts
+parseAtomExpr :: Tokens -> ParseState
+parseAtomExpr (TNumber n : ts) = return (ASTNumber n, ts)
+parseAtomExpr (TMinus:ts)  = do (x, ts') <- parseAtomExpr ts
+                                return (ASTUnaryMinus x, ts')
+parseAtomExpr (TPlus:ts)   = do (x, ts') <- parseAtomExpr ts
+                                return (ASTUnaryPlus x, ts')
+parseAtomExpr (TLParen:ts) = do (x, ts') <- parseAddExpr ts
+                                ts'' <- matchToken TRParen ts'
+                                return (x, ts'')
+parseAtomExpr ts = syntaxError "expression expected" ts
