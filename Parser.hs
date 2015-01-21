@@ -30,27 +30,27 @@ matchToken t ts = do syntaxError (show t ++ " expected") ts
                      return ts
 
 parse :: Tokens -> ParseState
-parse = parseExpression
+parse = parseAddExpr
 
-parseExpression :: Tokens -> ParseState
-parseExpression = parseLeftAssocOperator
-                  [(TPlus, ASTPlus), (TMinus, ASTMinus)]
-                  parseFactor
+parseAddExpr :: Tokens -> ParseState
+parseAddExpr = parseLeftAssocOperator
+               [(TPlus, ASTPlus), (TMinus, ASTMinus)]
+               parseMultExpr
 
-parseFactor :: Tokens -> ParseState
-parseFactor (TMinus:ts) = do (x, ts') <- parseFactor ts
-                             return (ASTUnaryMinus x, ts')
-parseFactor (TPlus:ts) = do (x, ts') <- parseFactor ts
-                            return (ASTUnaryPlus x, ts')
-parseFactor (TLParen:ts) = do (x, ts') <- parseExpression ts
-                              ts'' <- matchToken TRParen ts'
-                              return (x, ts'')
-parseFactor ts = parseLeftAssocOperator
-                 [(TMultiply, ASTMultiply), (TDivide, ASTDivide)]
-                 parsePower ts
+parseMultExpr :: Tokens -> ParseState
+parseMultExpr (TMinus:ts)  = do (x, ts') <- parseMultExpr ts
+                                return (ASTUnaryMinus x, ts')
+parseMultExpr (TPlus:ts)   = do (x, ts') <- parseMultExpr ts
+                                return (ASTUnaryPlus x, ts')
+parseMultExpr (TLParen:ts) = do (x, ts') <- parseAddExpr ts
+                                ts'' <- matchToken TRParen ts'
+                                return (x, ts'')
+parseMultExpr ts = parseLeftAssocOperator
+                   [(TMultiply, ASTMultiply), (TDivide, ASTDivide)]
+                   parsePowerExpr ts
 
-parsePower :: Tokens -> ParseState
-parsePower = parseRightAssocOperator [(TPower, ASTPower)] parseNumber
+parsePowerExpr :: Tokens -> ParseState
+parsePowerExpr = parseRightAssocOperator [(TPower, ASTPower)] parseNumber
 
 parseLeftAssocOperator :: [(Token, AST -> AST -> AST)] ->
                           (Tokens -> ParseState) ->
