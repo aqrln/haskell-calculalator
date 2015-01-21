@@ -33,21 +33,11 @@ parse :: Tokens -> ParseState
 parse = parseExpression
 
 parseExpression :: Tokens -> ParseState
-parseExpression tokens = do
-    (initial, ts) <- parseFactor tokens
-    parseTail initial ts
-      where parseTail left [] = return (left, [])
-            parseTail left (t:ts)
-              | t == TPlus = parseExpr ASTPlus left ts
-              | t == TMinus = parseExpr ASTMinus left ts
-              | otherwise = return (left, t:ts)
-            parseExpr astOp left ts = do
-                (right, ts') <- parseFactor ts
-                let ast = astOp left right
-                parseTail ast ts'
+parseExpression = parseLeftAssocOperator
+                  [(TPlus, ASTPlus), (TMinus, ASTMinus)]
+                  parseFactor
 
 parseFactor :: Tokens -> ParseState
-parseFactor tokens@(TNumber n : ts) = parseNumber tokens
 parseFactor (TMinus:ts) = do (x, ts') <- parseFactor ts
                              return (ASTUnaryMinus x, ts')
 parseFactor (TPlus:ts) = do (x, ts') <- parseFactor ts
@@ -55,7 +45,25 @@ parseFactor (TPlus:ts) = do (x, ts') <- parseFactor ts
 parseFactor (TLParen:ts) = do (x, ts') <- parseExpression ts
                               ts'' <- matchToken TRParen ts'
                               return (x, ts'')
-parseFactor ts = syntaxError "expression expected" ts
+parseFactor ts = parseLeftAssocOperator
+                 [(TMultiply, ASTMultiply), (TDivide, ASTDivide)]
+                 parseNumber ts
+
+parseLeftAssocOperator :: [(Token, AST -> AST -> AST)] ->
+                          (Tokens -> ParseState) ->
+                          Tokens -> ParseState
+parseLeftAssocOperator tokenToAST parseElem tokens = do
+    (initial, ts) <- parseElem tokens
+    parseTail initial ts
+      where parseTail left [] = return (left, [])
+            parseTail left (t:ts) =
+                let astOp = lookup t tokenToAST
+                 in case astOp of Just x -> parseExpr x left ts
+                                  Nothing -> return (left, t:ts)
+            parseExpr astOp left ts = do
+                (right, ts') <- parseElem ts
+                let ast = astOp left right
+                parseTail ast ts'
 
 parseNumber :: Tokens -> ParseState
 parseNumber (TNumber n : ts) = return (ASTNumber n, ts)
