@@ -23,6 +23,12 @@ syntaxError :: String -> Tokens -> MaybeAST
 syntaxError msg tokens = Left $ msg ++ " near "
                          ++ (unwords $ map show $ take 3 tokens)
 
+matchToken :: Token -> Tokens -> Either String Tokens
+matchToken t (t':ts)
+  | t == t' = return ts
+matchToken t ts = do syntaxError (show t ++ " expected") ts
+                     return ts
+
 parse :: Tokens -> MaybeAST
 parse = parseExpression
 
@@ -34,14 +40,22 @@ parseExpression tokens = do
             parseTail left (t:ts)
               | t == TPlus = parseExpr ASTPlus left ts
               | t == TMinus = parseExpr ASTMinus left ts
-              | otherwise = return (left, ts)
+              | otherwise = return (left, t:ts)
             parseExpr astOp left ts = do
                 (right, ts') <- parseFactor ts
                 let ast = astOp left right
                 parseTail ast ts'
 
 parseFactor :: Tokens -> MaybeAST
-parseFactor = parseNumber
+parseFactor tokens@(TNumber n : ts) = parseNumber tokens
+parseFactor (TMinus:ts) = do (x, ts') <- parseFactor ts
+                             return (ASTUnaryMinus x, ts')
+parseFactor (TPlus:ts) = do (x, ts') <- parseFactor ts
+                            return (ASTUnaryPlus x, ts')
+parseFactor (TLParen:ts) = do (x, ts') <- parseExpression ts
+                              ts'' <- matchToken TRParen ts'
+                              return (x, ts'')
+parseFactor ts = syntaxError "expression expected" ts
 
 parseNumber :: Tokens -> MaybeAST
 parseNumber (TNumber n : ts) = return (ASTNumber n, ts)
