@@ -16,10 +16,10 @@ data AST = ASTNumber Double
          | ASTExpression AST
          deriving (Eq, Show)
 
-type MaybeAST = Either String (AST, Tokens)
+type ParseState = Either String (AST, Tokens)
 type Tokens = [Token]
 
-syntaxError :: String -> Tokens -> MaybeAST
+syntaxError :: String -> Tokens -> ParseState
 syntaxError msg tokens = Left $ msg ++ " near "
                          ++ (unwords $ map show $ take 3 tokens)
 
@@ -29,10 +29,10 @@ matchToken t (t':ts)
 matchToken t ts = do syntaxError (show t ++ " expected") ts
                      return ts
 
-parse :: Tokens -> MaybeAST
+parse :: Tokens -> ParseState
 parse = parseExpression
 
-parseExpression :: Tokens -> MaybeAST
+parseExpression :: Tokens -> ParseState
 parseExpression tokens = do
     (initial, ts) <- parseFactor tokens
     parseTail initial ts
@@ -46,7 +46,7 @@ parseExpression tokens = do
                 let ast = astOp left right
                 parseTail ast ts'
 
-parseFactor :: Tokens -> MaybeAST
+parseFactor :: Tokens -> ParseState
 parseFactor tokens@(TNumber n : ts) = parseNumber tokens
 parseFactor (TMinus:ts) = do (x, ts') <- parseFactor ts
                              return (ASTUnaryMinus x, ts')
@@ -57,6 +57,6 @@ parseFactor (TLParen:ts) = do (x, ts') <- parseExpression ts
                               return (x, ts'')
 parseFactor ts = syntaxError "expression expected" ts
 
-parseNumber :: Tokens -> MaybeAST
+parseNumber :: Tokens -> ParseState
 parseNumber (TNumber n : ts) = return (ASTNumber n, ts)
 parseNumber ts = syntaxError "number expected" ts
