@@ -19,7 +19,7 @@ data AST = ASTNumber Double
 type ParseState = Either String (AST, Tokens)
 type Tokens = [Token]
 
-syntaxError :: String -> Tokens -> ParseState
+syntaxError :: String -> Tokens -> Either String a
 syntaxError msg tokens = Left $ msg ++ " near "
                          ++ (unwords $ map show $ take 3 tokens)
 
@@ -29,8 +29,17 @@ matchToken t (t':ts)
 matchToken t ts = do syntaxError (show t ++ " expected") ts
                      return ts
 
-parse :: Tokens -> ParseState
-parse = parseAddExpr
+parse :: Tokens -> Either String AST
+parse tokens = do
+    (expr, rest) <- parseExpression tokens
+    if null rest
+       then return expr
+       else syntaxError "unexpected tokens" rest
+
+parseExpression :: Tokens -> ParseState
+parseExpression ts = do
+    (expr, ts') <- parseAddExpr ts
+    return (ASTExpression expr, ts')
 
 parseAddExpr :: Tokens -> ParseState
 parseAddExpr = parseLeftAssocOperator
