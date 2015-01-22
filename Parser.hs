@@ -47,9 +47,9 @@ parseAddExpr = parseLeftAssocOperator
                parseMultExpr
 
 parseMultExpr :: Tokens -> ParseState
-parseMultExpr ts = parseLeftAssocOperator
+parseMultExpr = parseLeftAssocOperator
                    [(TMultiply, ASTMultiply), (TDivide, ASTDivide)]
-                   parsePowerExpr ts
+                   parsePowerExpr
 
 parsePowerExpr :: Tokens -> ParseState
 parsePowerExpr = parseRightAssocOperator [(TPower, ASTPower)] parseAtomExpr
